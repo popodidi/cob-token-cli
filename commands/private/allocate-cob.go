@@ -122,7 +122,7 @@ func allocateCOBAction(c *cli.Context) error {
 
 	shouldStart := false
 	shouldStartPrompt := &survey.Confirm{
-		Message: "Start sending COBs",
+		Message: "START SENDING TX",
 	}
 	survey.AskOne(shouldStartPrompt, &shouldStart, nil)
 

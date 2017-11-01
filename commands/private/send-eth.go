@@ -8,6 +8,7 @@ import (
 	"math/big"
 	"github.com/ethereum/go-ethereum/core/types"
 	"fmt"
+	"errors"
 )
 
 func sendETHAction(c *cli.Context) error {
@@ -46,6 +47,16 @@ func sendETHAction(c *cli.Context) error {
 	err := survey.Ask(qs, &answers)
 	if err != nil {
 		return cli.NewExitError(err.Error(), 1)
+	}
+
+	shouldStart := false
+	shouldStartPrompt := &survey.Confirm{
+		Message: "START SENDING TX",
+	}
+	survey.AskOne(shouldStartPrompt, &shouldStart, nil)
+
+	if !shouldStart {
+		return cli.NewExitError(errors.New("user stopped"), 1)
 	}
 
 	value := decimal.NewFromFloat(answers.Value)
