@@ -25,7 +25,7 @@ func sendETHAction(c *cli.Context) error {
 		},
 		{
 			Name:     "value",
-			Prompt:   &survey.Input{Message: "Value"},
+			Prompt:   &survey.Input{Message: "ETH Value"},
 			Validate: survey.Required,
 		},
 		{
