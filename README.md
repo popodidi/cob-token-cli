@@ -15,6 +15,7 @@ Go: https://golang.org/doc/install
 
 ```bash
 $ go get github.com/popodidi/cob-token-cli
+$ go install github.com/popodidi/cob-token-cli
 ```
 
 ## Usage
