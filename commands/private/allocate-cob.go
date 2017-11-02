@@ -48,7 +48,7 @@ func allocateCOBAction(c *cli.Context) error {
 	}
 
 	if !utils.AskForConfirm(
-		fmt.Sprintf("Total count: %d / Total value: %s COBs / Err coune: %d",
+		fmt.Sprintf("Total count: %d / Total value: %s COBs / Err count: %d",
 			len(toSends)-errCount, totalValue.String(), errCount)) {
 		return cli.NewExitError(errors.New("user stopped"), 1)
 	}
@@ -84,18 +84,18 @@ func allocateCOBAction(c *cli.Context) error {
 		cobAmount, _err = utils.StringToWei(toSends[i].value)
 
 		if _err != nil {
-			log = []string{toSends[i].address, fmt.Sprintf("%f", toSends[i].value), _err.Error()}
+			log = []string{toSends[i].address, toSends[i].value, _err.Error()}
 			updateLogsAndBar(log)
 			continue
 		}
 		_tx, _err := utils.SendCOB(privateKey, toSends[i].address, cobAmount, big.NewInt(500000), gasPrice)
 
 		if _err != nil {
-			log = []string{toSends[i].address, fmt.Sprintf("%f", toSends[i].value), _err.Error()}
+			log = []string{toSends[i].address, toSends[i].value, _err.Error()}
 			updateLogsAndBar(log)
 			continue
 		}
-		log = []string{toSends[i].address, fmt.Sprintf("%f", toSends[i].value), _tx.Hash().Hex()}
+		log = []string{toSends[i].address, toSends[i].value, _tx.Hash().Hex()}
 		updateLogsAndBar(log)
 	}
 	bar.Finish()
