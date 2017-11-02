@@ -30,12 +30,15 @@ func StringToWei(s string) (*big.Int, error) {
 		return nil, err
 	}
 	d = d.Mul(decimal.New(1, 18))
-	amount, success := big.NewFloat(1).SetString(d.String())
-	if !success {
-		return nil, errors.New("can't generate wei")
-	}
+	d = d.Truncate(0)
 
-	wei, _ := amount.Int(nil)
+	tenPower := big.NewInt(0)
+	exp := big.NewInt(int64(d.Exponent()))
+	tenPower.Exp(big.NewInt(10), exp, big.NewInt(0))
+
+	var wei *big.Int = big.NewInt(0)
+	wei.Mul(d.Coefficient(), tenPower)
+
 	return wei, nil
 }
 
