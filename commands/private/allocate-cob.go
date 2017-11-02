@@ -69,7 +69,6 @@ func allocateCOBAction(c *cli.Context) error {
 	}
 
 	var logs = [][]string{[]string{"address", "value", "tx"}}
-	defer writeLogsToFile(logs, dir)
 
 	count := len(toSends)
 	bar := pb.StartNew(count)
@@ -101,6 +100,7 @@ func allocateCOBAction(c *cli.Context) error {
 	}
 	bar.Finish()
 
+	writeLogsToFile(logs, dir)
 	return nil
 }
 
