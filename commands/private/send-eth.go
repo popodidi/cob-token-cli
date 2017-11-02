@@ -3,7 +3,6 @@ package private
 import (
 	"github.com/urfave/cli"
 	"github.com/popodidi/cob-token-cli/utils"
-	"github.com/shopspring/decimal"
 	"math/big"
 	"github.com/ethereum/go-ethereum/core/types"
 	"fmt"
@@ -22,14 +21,17 @@ func sendETHAction(c *cli.Context) error {
 		return cli.NewExitError(err.Error(), 1)
 	}
 
-	var ethFloat float64
-	ethFloat, err = utils.AskForFloat("ETH Value")
+	var ethValueString string
+	ethValueString, err = utils.AskForString("ETH Value")
 	if err != nil {
 		return cli.NewExitError(err.Error(), 1)
 	}
-	ethDecimal := decimal.NewFromFloat(ethFloat)
-	ethDecimal = ethDecimal.Mul(decimal.New(1, 18))
-	ethAmount := big.NewInt(ethDecimal.IntPart())
+
+	var ethAmount *big.Int
+	ethAmount, err = utils.StringToWei(ethValueString)
+	if err != nil {
+		return cli.NewExitError(err.Error(), 1)
+	}
 
 	var gasPrice *big.Int
 	gasPrice, err = utils.AskForGasPriceGwei()

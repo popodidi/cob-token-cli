@@ -2,7 +2,6 @@ package private
 
 import (
 	"github.com/urfave/cli"
-	"github.com/shopspring/decimal"
 	"math/big"
 	"fmt"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -22,14 +21,17 @@ func sendCOBAction(c *cli.Context) error {
 		return cli.NewExitError(err.Error(), 1)
 	}
 
-	var cobFloat float64
-	cobFloat, err = utils.AskForFloat("COB Value")
+	var cobValueString string
+	cobValueString, err = utils.AskForString("COB Value")
 	if err != nil {
 		return cli.NewExitError(err.Error(), 1)
 	}
-	cobDecimal := decimal.NewFromFloat(cobFloat)
-	cobDecimal = cobDecimal.Mul(decimal.New(1, 18))
-	cobAmount := big.NewInt(cobDecimal.IntPart())
+
+	var cobAmount *big.Int
+	cobAmount, err = utils.StringToWei(cobValueString)
+	if err != nil {
+		return cli.NewExitError(err.Error(), 1)
+	}
 
 	var gasPrice *big.Int
 	gasPrice, err = utils.AskForGasPriceGwei()

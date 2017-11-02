@@ -24,6 +24,21 @@ func NewClient() (*ethclient.Client, error) {
 	return ethclient.Dial("https://mainnet.infura.io")
 }
 
+func StringToWei(s string) (*big.Int, error) {
+	d, err := decimal.NewFromString(s)
+	if err != nil {
+		return nil, err
+	}
+	d = d.Mul(decimal.New(1, 18))
+	amount, success := big.NewFloat(1).SetString(d.String())
+	if !success {
+		return nil, errors.New("can't generate wei")
+	}
+
+	wei, _ := amount.Int(nil)
+	return wei, nil
+}
+
 func GetEthBalanceOf(address string) (*decimal.Decimal, error) {
 	client, err := NewClient()
 	if err != nil {

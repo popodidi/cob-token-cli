@@ -4,19 +4,18 @@ import (
 	"github.com/urfave/cli"
 	"os"
 	"path"
-	"strconv"
 	"fmt"
 	"errors"
 	"gopkg.in/cheggaaa/pb.v2"
 	"github.com/popodidi/cob-token-cli/utils"
-	"github.com/shopspring/decimal"
 	"math/big"
 	"time"
+	"github.com/shopspring/decimal"
 )
 
 type toSend struct {
 	address string
-	value   float64
+	value   string
 }
 
 func allocateCOBAction(c *cli.Context) error {
@@ -37,13 +36,20 @@ func allocateCOBAction(c *cli.Context) error {
 		return cli.NewExitError(err.Error(), 1)
 	}
 
-	var totalValue float64 = 0
+	totalValue := decimal.NewFromFloat(0)
+	errCount := 0
 	for _, s := range toSends {
-		totalValue += s.value
+		_amount, _err := utils.StringToWei(s.value)
+		if _err != nil {
+			errCount += 1
+		} else {
+			totalValue = totalValue.Add(decimal.NewFromBigInt(_amount, 0).Div(decimal.New(1, 18)))
+		}
 	}
 
 	if !utils.AskForConfirm(
-		fmt.Sprintf("Total count: %d / Total value: %f COBs", len(toSends), totalValue)) {
+		fmt.Sprintf("Total count: %d / Total value: %s COBs / Err coune: %d",
+			len(toSends)-errCount, totalValue.String(), errCount)) {
 		return cli.NewExitError(errors.New("user stopped"), 1)
 	}
 
@@ -68,20 +74,30 @@ func allocateCOBAction(c *cli.Context) error {
 	count := len(toSends)
 	bar := pb.StartNew(count)
 	for i := 0; i < count; i++ {
-		cobValue := decimal.NewFromFloat(toSends[i].value)
-		cobValue = cobValue.Mul(decimal.New(1, 18))
-		cobAmount := big.NewInt(cobValue.IntPart())
+		var log []string
 
+		next := func() {
+			logs = append(logs, log)
+			bar.Increment()
+		}
+
+		var cobAmount *big.Int
+		cobAmount, err = utils.StringToWei(toSends[i].value)
+
+		if err != nil {
+			log = []string{toSends[i].address, fmt.Sprintf("%f", toSends[i].value), "ERROR"}
+			next()
+			continue
+		}
 		_tx, _err := utils.SendCOB(privateKey, toSends[i].address, cobAmount, big.NewInt(500000), gasPrice)
 
-		var log []string
 		if _err != nil {
 			log = []string{toSends[i].address, fmt.Sprintf("%f", toSends[i].value), "ERROR"}
+			next()
+			continue
 		}
 		log = []string{toSends[i].address, fmt.Sprintf("%f", toSends[i].value), _tx.Hash().Hex()}
-		logs = append(logs, log)
-
-		bar.Increment()
+		next()
 	}
 	bar.Finish()
 
@@ -103,10 +119,7 @@ func readFromCsvData(csvData [][]string) ([]toSend, error) {
 			}
 		} else {
 			addr := row[0]
-			value, err := strconv.ParseFloat(row[1], 64)
-			if err != nil {
-				return nil, err
-			}
+			value := row[1]
 			toSends = append(toSends, toSend{addr, value})
 		}
 	}
