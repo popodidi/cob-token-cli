@@ -4,15 +4,13 @@ import (
 	"github.com/urfave/cli"
 	"fmt"
 	"github.com/popodidi/cob-token-cli/utils"
-	"gopkg.in/AlecAivazis/survey.v1"
 )
 
 func cobBalanceAction(c *cli.Context) error {
-	address := ""
-	addressPrompt := &survey.Input{
-		Message: "ETH address",
+	address, err := utils.AskForETHAddress()
+	if err != nil {
+		return cli.NewExitError(err.Error(), 1)
 	}
-	survey.AskOne(addressPrompt, &address, nil)
 
 	balance, err := utils.GetCobBalanceOf(address)
 	if err != nil {

@@ -2,13 +2,8 @@ package private
 
 import (
 	"github.com/urfave/cli"
-	"gopkg.in/AlecAivazis/survey.v1"
 	"os"
-	"io/ioutil"
-	"strings"
 	"path"
-	"encoding/csv"
-	"bufio"
 	"strconv"
 	"fmt"
 	"errors"
@@ -30,110 +25,46 @@ func allocateCOBAction(c *cli.Context) error {
 		return cli.NewExitError(err.Error(), 1)
 	}
 
-	var files []os.FileInfo
-	files, err = ioutil.ReadDir(dir)
+	var csvData [][]string
+	csvData, err = utils.SelectCSV(dir, "Choose a .csv file")
 	if err != nil {
 		return cli.NewExitError(err.Error(), 1)
 	}
 
-	var csvFiles []string
-	for _, f := range files {
-		if !f.IsDir() && strings.HasSuffix(f.Name(), ".csv") {
-			csvFiles = append(csvFiles, f.Name())
-		}
-	}
-
-	csvFileName := ""
-	csvFilePrompt := &survey.Select{
-		Message: "Choose a .csv file",
-		Options: csvFiles,
-	}
-	survey.AskOne(csvFilePrompt, &csvFileName, nil)
-
-	var csvFile *os.File
-	csvFile, err = os.Open(path.Join(dir, csvFileName))
-
-	r := csv.NewReader(bufio.NewReader(csvFile))
-
-	var result [][]string
-	result, err = r.ReadAll()
+	var toSends []toSend
+	toSends, err = readFromCsvData(csvData)
 	if err != nil {
 		return cli.NewExitError(err.Error(), 1)
-	}
-
-	toSends := make([]toSend, 0)
-	for i, row := range result {
-		if len(row) != 2 {
-			return cli.NewExitError(err.Error(), 1)
-		}
-		if i == 0 {
-			isValidTitle := row[0] == "address" && row[1] == "value"
-			if isValidTitle {
-				continue
-			} else {
-				return cli.NewExitError(err.Error(), 1)
-			}
-		} else {
-			addr := row[0]
-			value, _err := strconv.ParseFloat(row[1], 64)
-			if _err != nil {
-				return cli.NewExitError(_err.Error(), 1)
-			}
-			toSends = append(toSends, toSend{addr, value})
-		}
 	}
 
 	var totalValue float64 = 0
 	for _, s := range toSends {
 		totalValue += s.value
 	}
-	confirmTotalValue := false
-	confirmTotalValuePrompt := &survey.Confirm{
-		Message: fmt.Sprintf("Total count: %d / Total value: %f COBs", len(toSends), totalValue),
-	}
-	survey.AskOne(confirmTotalValuePrompt, &confirmTotalValue, nil)
 
-	if !confirmTotalValue {
+	if !utils.AskForConfirm(
+		fmt.Sprintf("Total count: %d / Total value: %f COBs", len(toSends), totalValue)) {
 		return cli.NewExitError(errors.New("user stopped"), 1)
 	}
 
-	var qs = []*survey.Question{
-		{
-			Name:     "from-private-key",
-			Prompt:   &survey.Password{Message: "From private key"},
-			Validate: survey.Required,
-		},
-		{
-			Name:     "gas-price",
-			Prompt:   &survey.Input{Message: "Gas Price (Gwei)"},
-			Validate: survey.Required,
-		},
+	var privateKey string
+	var gasPrice *big.Int
+	privateKey, err = utils.AskForPrivateKey()
+	if err != nil {
+		return cli.NewExitError(err.Error(), 1)
 	}
-
-	answers := struct {
-		FromPrivKey string `survey:"from-private-key"`
-		GasPrice    int64  `survey:"gas-price"`
-	}{}
-
-	err = survey.Ask(qs, &answers)
+	gasPrice, err = utils.AskForGasPriceGwei()
 	if err != nil {
 		return cli.NewExitError(err.Error(), 1)
 	}
 
-	shouldStart := false
-	shouldStartPrompt := &survey.Confirm{
-		Message: "START SENDING TX",
-	}
-	survey.AskOne(shouldStartPrompt, &shouldStart, nil)
-
-	if !shouldStart {
+	if !utils.AskForConfirm("START") {
 		return cli.NewExitError(errors.New("user stopped"), 1)
 	}
 
 	var logs = [][]string{[]string{"address", "value", "tx"}}
+	defer writeLogsToFile(logs, dir)
 
-	gasPrice := big.NewInt(1)
-	gasPrice.Mul(big.NewInt(answers.GasPrice), big.NewInt(1000000000))
 	count := len(toSends)
 	bar := pb.StartNew(count)
 	for i := 0; i < count; i++ {
@@ -141,32 +72,52 @@ func allocateCOBAction(c *cli.Context) error {
 		cobValue = cobValue.Mul(decimal.New(1, 18))
 		cobAmount := big.NewInt(cobValue.IntPart())
 
-		_tx, _err := utils.SendCOB(answers.FromPrivKey, toSends[i].address, cobAmount, big.NewInt(500000), gasPrice)
+		_tx, _err := utils.SendCOB(privateKey, toSends[i].address, cobAmount, big.NewInt(500000), gasPrice)
+
+		var log []string
 		if _err != nil {
-			logs = append(logs, []string{toSends[i].address, fmt.Sprintf("%f", toSends[i].value), "ERROR"})
+			log = []string{toSends[i].address, fmt.Sprintf("%f", toSends[i].value), "ERROR"}
 		}
-		logs = append(logs, []string{toSends[i].address, fmt.Sprintf("%f", toSends[i].value), _tx.Hash().Hex()})
+		log = []string{toSends[i].address, fmt.Sprintf("%f", toSends[i].value), _tx.Hash().Hex()}
+		logs = append(logs, log)
+
 		bar.Increment()
 	}
 	bar.Finish()
 
-	var logFile *os.File
-	logFileName := csvFileName + "." + fmt.Sprint(time.Now().Unix()) + ".log"
-	logFile, err = os.Create(path.Join(dir, logFileName))
-	if err != nil {
-		return cli.NewExitError(err.Error(), 1)
-	}
-	defer logFile.Close()
+	return nil
+}
 
-	writer := csv.NewWriter(logFile)
-	defer writer.Flush()
-
-	for _, value := range logs {
-		err = writer.Write(value)
-		if err != nil {
-			return cli.NewExitError(err.Error(), 1)
+func readFromCsvData(csvData [][]string) ([]toSend, error) {
+	toSends := make([]toSend, 0)
+	for i, row := range csvData {
+		if len(row) != 2 {
+			return nil, errors.New("invalid column number (must be 2)")
+		}
+		if i == 0 {
+			isValidTitle := row[0] == "address" && row[1] == "value"
+			if isValidTitle {
+				continue
+			} else {
+				return nil, errors.New("invalid column title (must be \"address\",\"value\")")
+			}
+		} else {
+			addr := row[0]
+			value, err := strconv.ParseFloat(row[1], 64)
+			if err != nil {
+				return nil, err
+			}
+			toSends = append(toSends, toSend{addr, value})
 		}
 	}
+	return toSends, nil
+}
 
-	return nil
+func writeLogsToFile(logs [][]string, dir string) error {
+	logFilePath := "log." + fmt.Sprint(time.Now().Unix()) + ".csv"
+	err := utils.WriteDataToCsv(logs, path.Join(dir, logFilePath))
+	if err != nil {
+		fmt.Printf("log file written to %s", logFilePath)
+	}
+	return err
 }

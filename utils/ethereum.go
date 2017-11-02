@@ -24,6 +24,24 @@ func NewClient() (*ethclient.Client, error) {
 	return ethclient.Dial("https://mainnet.infura.io")
 }
 
+func GetEthBalanceOf(address string) (*decimal.Decimal, error) {
+	client, err := NewClient()
+	if err != nil {
+		return nil, err
+	}
+	ctx, _ := context.WithTimeout(context.Background(), time.Minute*1)
+	addr := common.HexToAddress(address)
+
+	var balance *big.Int
+	balance, err = client.BalanceAt(ctx, addr, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	balanceDecimal := decimal.NewFromBigInt(balance, -18)
+	return &balanceDecimal, nil
+}
+
 func GetCobBalanceOf(address string) (*decimal.Decimal, error) {
 	client, err := NewClient()
 	if err != nil {
