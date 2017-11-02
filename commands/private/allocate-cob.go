@@ -73,31 +73,30 @@ func allocateCOBAction(c *cli.Context) error {
 
 	count := len(toSends)
 	bar := pb.StartNew(count)
+	updateLogsAndBar := func(_l []string) {
+		logs = append(logs, _l)
+		bar.Increment()
+	}
+
 	for i := 0; i < count; i++ {
 		var log []string
-
-		next := func() {
-			logs = append(logs, log)
-			bar.Increment()
-		}
-
 		var cobAmount *big.Int
 		cobAmount, err = utils.StringToWei(toSends[i].value)
 
 		if err != nil {
 			log = []string{toSends[i].address, fmt.Sprintf("%f", toSends[i].value), "ERROR"}
-			next()
+			updateLogsAndBar(log)
 			continue
 		}
 		_tx, _err := utils.SendCOB(privateKey, toSends[i].address, cobAmount, big.NewInt(500000), gasPrice)
 
 		if _err != nil {
 			log = []string{toSends[i].address, fmt.Sprintf("%f", toSends[i].value), "ERROR"}
-			next()
+			updateLogsAndBar(log)
 			continue
 		}
 		log = []string{toSends[i].address, fmt.Sprintf("%f", toSends[i].value), _tx.Hash().Hex()}
-		next()
+		updateLogsAndBar(log)
 	}
 	bar.Finish()
 

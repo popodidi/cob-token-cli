@@ -32,7 +32,7 @@ USAGE:
    cob-token-cli [global options] command [command options] [arguments...]
 
 VERSION:
-   0.1.2
+   0.1.3
 
 COMMANDS:
      help, h  Shows a list of commands or help for one command

@@ -15,7 +15,7 @@ func main() {
 func NewApp() *cli.App {
 	app := cli.NewApp()
 	app.Name = "cob-token-cli"
-	app.Version = "0.1.2"
+	app.Version = "0.1.3"
 	app.Compiled = time.Now()
 	app.Usage = "A COB token mangement command line tool"
 	app.Commands = commands.All()
