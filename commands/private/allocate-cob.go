@@ -18,14 +18,47 @@ type toSend struct {
 	value   string
 }
 
+type sendLog struct {
+	toSend    toSend
+	txHash    string
+	timestamp int64
+	error     error
+}
+
+func (l *sendLog) Keys() []string {
+	return []string{"address", "value", "tx", "timestamp", "error"}
+}
+
+func (l *sendLog) Value(key string) string {
+	switch key {
+	case "address":
+		return l.toSend.address
+	case "value":
+		return l.toSend.value
+	case "tx":
+		return l.txHash
+	case "timestamp":
+		return fmt.Sprintf("%d", l.timestamp)
+	case "error":
+		if l.error != nil {
+			return l.error.Error()
+		} else {
+			return ""
+		}
+	default:
+		return ""
+	}
+}
+
 func allocateCOBAction(c *cli.Context) error {
 	dir, err := os.Getwd()
 	if err != nil {
 		return cli.NewExitError(err.Error(), 1)
 	}
 
+	var csvFileName string
 	var csvData [][]string
-	csvData, err = utils.SelectCSV(dir, "Choose a .csv file")
+	csvFileName, csvData, err = utils.SelectCSV(dir, "Choose a .csv file")
 	if err != nil {
 		return cli.NewExitError(err.Error(), 1)
 	}
@@ -68,39 +101,54 @@ func allocateCOBAction(c *cli.Context) error {
 		return cli.NewExitError(errors.New("user stopped"), 1)
 	}
 
-	var logs = [][]string{[]string{"address", "value", "tx"}}
+	var logs = []sendLog{}
 
 	count := len(toSends)
 	bar := pb.StartNew(count)
-	updateLogsAndBar := func(_l []string) {
+	updateLogsAndBar := func(_l sendLog) {
 		logs = append(logs, _l)
 		bar.Increment()
 	}
 
 	for i := 0; i < count; i++ {
-		var log []string
+		var log sendLog
 		var cobAmount *big.Int
 		var _err error
 		cobAmount, _err = utils.StringToWei(toSends[i].value)
 
 		if _err != nil {
-			log = []string{toSends[i].address, toSends[i].value, _err.Error()}
+			log = sendLog{
+				toSend:    toSends[i],
+				txHash:    "",
+				timestamp: time.Now().Unix(),
+				error:     _err,
+			}
 			updateLogsAndBar(log)
 			continue
 		}
 		_tx, _err := utils.SendCOB(privateKey, toSends[i].address, cobAmount, big.NewInt(500000), gasPrice)
 
 		if _err != nil {
-			log = []string{toSends[i].address, toSends[i].value, _err.Error()}
+			log = sendLog{
+				toSend:    toSends[i],
+				txHash:    "",
+				timestamp: time.Now().Unix(),
+				error:     _err,
+			}
 			updateLogsAndBar(log)
 			continue
 		}
-		log = []string{toSends[i].address, toSends[i].value, _tx.Hash().Hex()}
+		log = sendLog{
+			toSend:    toSends[i],
+			txHash:    _tx.Hash().Hex(),
+			timestamp: time.Now().Unix(),
+			error:     _err,
+		}
 		updateLogsAndBar(log)
 	}
 	bar.Finish()
 
-	writeLogsToFile(logs, dir)
+	writeLogsToFile(logs, dir, csvFileName)
 	return nil
 }
 
@@ -126,11 +174,42 @@ func readFromCsvData(csvData [][]string) ([]toSend, error) {
 	return toSends, nil
 }
 
-func writeLogsToFile(logs [][]string, dir string) error {
-	logFilePath := "log." + fmt.Sprint(time.Now().Unix()) + ".csv"
-	err := utils.WriteDataToCsv(logs, path.Join(dir, logFilePath))
+func writeLogsToFile(sendLogs []sendLog, dir string, csvName string) error {
+	if len(sendLogs) == 0 {
+		return errors.New("no logs to write")
+	}
+
+	timeStr := fmt.Sprintf("%d%d%d%d%d%d",
+		time.Now().Year(), time.Now().Month(), time.Now().Day(),
+		time.Now().Hour(), time.Now().Minute(), time.Now().Second())
+	logFilePath := timeStr + ".log." + csvName
+	err := writeLogToCsv(sendLogs, path.Join(dir, logFilePath))
 	if err != nil {
-		fmt.Printf("log file written to %s", logFilePath)
+		fmt.Printf("failed to write log file\n%s", err.Error())
 	}
 	return err
+}
+
+func writeLogToCsv(logs []sendLog, filePath string) error {
+	if len(logs) == 0 {
+		return errors.New("no logs to write")
+	}
+
+	csvData := make([][]string, 0)
+	keys := logs[0].Keys()
+	header := make([]string, 0)
+	for _, k := range keys {
+		header = append(header, k)
+	}
+	csvData = append(csvData, header)
+
+	for _, l := range logs {
+		row := make([]string, 0)
+		for _, k := range keys {
+			row = append(row, l.Value(k))
+		}
+		csvData = append(csvData, row)
+	}
+
+	return utils.WriteDataToCsv(csvData, filePath)
 }
