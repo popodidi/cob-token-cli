@@ -180,6 +180,7 @@ func SendCOB(fromPrivKey string, toAddress string, amount, gasLimit, gasPrice *b
 		return nil, err
 	}
 
+	time.Sleep(time.Second * 5)
 	return waitTxMined(client, signedTx.Hash())
 }
 
