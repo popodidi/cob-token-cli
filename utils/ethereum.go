@@ -15,6 +15,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/ethereum/go-ethereum"
 	"errors"
+	"fmt"
 )
 
 const erc20ABI string = `[{"constant":false,"inputs":[{"name":"spender","type":"address"},{"name":"value","type":"uint256"}],"name":"approve","outputs":[{"name":"","type":"bool"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"totalSupply","outputs":[{"name":"","type":"uint256"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"from","type":"address"},{"name":"to","type":"address"},{"name":"value","type":"uint256"}],"name":"transferFrom","outputs":[{"name":"","type":"bool"}],"payable":false,"type":"function"},{"constant":true,"inputs":[{"name":"who","type":"address"}],"name":"balanceOf","outputs":[{"name":"","type":"uint256"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"to","type":"address"},{"name":"value","type":"uint256"}],"name":"transfer","outputs":[{"name":"","type":"bool"}],"payable":false,"type":"function"},{"constant":true,"inputs":[{"name":"owner","type":"address"},{"name":"spender","type":"address"}],"name":"allowance","outputs":[{"name":"","type":"uint256"}],"payable":false,"type":"function"},{"anonymous":false,"inputs":[{"indexed":true,"name":"owner","type":"address"},{"indexed":true,"name":"spender","type":"address"},{"indexed":false,"name":"value","type":"uint256"}],"name":"Approval","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"from","type":"address"},{"indexed":true,"name":"to","type":"address"},{"indexed":false,"name":"value","type":"uint256"}],"name":"Transfer","type":"event"}]`
@@ -36,7 +37,7 @@ func StringToWei(s string) (*big.Int, error) {
 	exp := big.NewInt(int64(d.Exponent()))
 	tenPower.Exp(big.NewInt(10), exp, big.NewInt(0))
 
-	var wei *big.Int = big.NewInt(0)
+	var wei = big.NewInt(0)
 	wei.Mul(d.Coefficient(), tenPower)
 
 	return wei, nil
@@ -105,6 +106,12 @@ func GetCobBalanceOf(address string) (*decimal.Decimal, error) {
 }
 
 func SendETH(fromPrivKey string, toAddress string, amount, gasLimit, gasPrice *big.Int) (*types.Transaction, error) {
+	// validate toAddress
+	err := ValidateAddress(toAddress)
+	if err != nil {
+		return nil, err
+	}
+
 	client, err := NewClient()
 	if err != nil {
 		return nil, err
@@ -141,6 +148,12 @@ func SendETH(fromPrivKey string, toAddress string, amount, gasLimit, gasPrice *b
 }
 
 func SendCOB(fromPrivKey string, toAddress string, amount, gasLimit, gasPrice *big.Int) (*types.Transaction, error) {
+	// validate toAddress
+	err := ValidateAddress(toAddress)
+	if err != nil {
+		return nil, err
+	}
+
 	client, err := NewClient()
 	if err != nil {
 		return nil, err
@@ -182,6 +195,15 @@ func SendCOB(fromPrivKey string, toAddress string, amount, gasLimit, gasPrice *b
 
 	time.Sleep(time.Second * 5)
 	return waitTxMined(client, signedTx.Hash())
+}
+
+func ValidateAddress(addressStr string) error {
+	addr := common.HexToAddress(addressStr)
+	if addr.Hex() == addressStr {
+		return nil
+	}
+
+	return fmt.Errorf("invalid address. \"%s\"", addressStr)
 }
 
 func waitTxMined(client *ethclient.Client, txHash common.Hash) (*types.Transaction, error) {

@@ -20,6 +20,10 @@ func sendETHAction(c *cli.Context) error {
 	if err != nil {
 		return cli.NewExitError(err.Error(), 1)
 	}
+	err = utils.ValidateAddress(toAddress)
+	if err != nil {
+		return cli.NewExitError(err.Error(), 1)
+	}
 
 	var ethValueString string
 	ethValueString, err = utils.AskForString("ETH Value")

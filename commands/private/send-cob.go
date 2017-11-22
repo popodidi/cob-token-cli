@@ -20,6 +20,10 @@ func sendCOBAction(c *cli.Context) error {
 	if err != nil {
 		return cli.NewExitError(err.Error(), 1)
 	}
+	err = utils.ValidateAddress(toAddress)
+	if err != nil {
+		return cli.NewExitError(err.Error(), 1)
+	}
 
 	var cobValueString string
 	cobValueString, err = utils.AskForString("COB Value")
