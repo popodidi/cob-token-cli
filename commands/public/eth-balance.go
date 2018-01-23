@@ -1,9 +1,11 @@
 package public
 
 import (
-	"github.com/urfave/cli"
 	"fmt"
+
 	"github.com/popodidi/cob-token-cli/utils"
+
+	"github.com/urfave/cli"
 )
 
 func ethBalanceAction(c *cli.Context) error {

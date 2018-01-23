@@ -2,9 +2,11 @@ package main
 
 import (
 	"os"
-	"github.com/urfave/cli"
-	"github.com/popodidi/cob-token-cli/commands"
 	"time"
+
+	"github.com/popodidi/cob-token-cli/commands"
+
+	"github.com/urfave/cli"
 )
 
 func main() {
@@ -15,7 +17,7 @@ func main() {
 func NewApp() *cli.App {
 	app := cli.NewApp()
 	app.Name = "cob-token-cli"
-	app.Version = "0.1.8"
+	app.Version = "0.1.9"
 	app.Compiled = time.Now()
 	app.Usage = "A COB token mangement command line tool"
 	app.Commands = commands.All()

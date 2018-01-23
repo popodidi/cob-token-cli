@@ -1,12 +1,14 @@
 package private
 
 import (
-	"github.com/urfave/cli"
-	"github.com/popodidi/cob-token-cli/utils"
-	"math/big"
-	"github.com/ethereum/go-ethereum/core/types"
-	"fmt"
 	"errors"
+	"fmt"
+	"math/big"
+
+	"github.com/popodidi/cob-token-cli/utils"
+
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/urfave/cli"
 )
 
 func sendETHAction(c *cli.Context) error {

@@ -1,14 +1,15 @@
 package utils
 
 import (
-	"os"
-	"io/ioutil"
-	"strings"
-	"gopkg.in/AlecAivazis/survey.v1"
-	"path"
-	"encoding/csv"
 	"bufio"
+	"encoding/csv"
 	"errors"
+	"io/ioutil"
+	"os"
+	"path"
+	"strings"
+
+	"gopkg.in/AlecAivazis/survey.v1"
 )
 
 func SelectCSV(dir string, message string) (fileName string, data [][]string, err error) {

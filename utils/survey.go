@@ -1,8 +1,9 @@
 package utils
 
 import (
-	"gopkg.in/AlecAivazis/survey.v1"
 	"math/big"
+
+	"gopkg.in/AlecAivazis/survey.v1"
 )
 
 func AskForConfirm(message string) bool {

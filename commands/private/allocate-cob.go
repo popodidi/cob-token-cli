@@ -1,16 +1,18 @@
 package private
 
 import (
-	"github.com/urfave/cli"
+	"errors"
+	"fmt"
+	"math/big"
 	"os"
 	"path"
-	"fmt"
-	"errors"
-	"gopkg.in/cheggaaa/pb.v2"
-	"github.com/popodidi/cob-token-cli/utils"
-	"math/big"
 	"time"
+
+	"github.com/popodidi/cob-token-cli/utils"
+
 	"github.com/shopspring/decimal"
+	"github.com/urfave/cli"
+	"gopkg.in/cheggaaa/pb.v2"
 )
 
 type toSend struct {
